@@ -1,7 +1,7 @@
 from data import load_data, split_out_of_time
 from features import get_features
 from tune import tune_hyperparameters
-from train import cross_validate, train_final
+from train import train_final
 from evaluate import evaluate, print_results, save_results
 
 CONFIGS = [
@@ -16,9 +16,8 @@ def main():
     Pipeline:
         1. Load and split data into train (80%) and out-of-time test (20%) by Time.
         2. For each config (with/without Time feature):
-            a. Tune hyperparameters via grid search on the training set.
-            b. Run stratified k-fold CV with best params; report OOF metrics.
-            c. Train a final model on all training data; evaluate on OOT test set.
+            a. Tune hyperparameters via grid search (CV is done internally).
+            b. Train a final model on all training data with best params; evaluate on OOT test set.
         3. Save all results to results_summary.csv.
     """
     print("Loading data...")
@@ -45,14 +44,6 @@ def main():
 
         print("\n[Hyperparameter tuning]")
         best_params = tune_hyperparameters(train_features, train_labels)
-
-        print("\n[Cross-validation with best params]")
-        oof_fraud_probs = cross_validate(train_features, train_labels, params=best_params)
-        cv_results = evaluate(
-            train_labels, oof_fraud_probs, label=f"{config_label} — CV (OOF)"
-        )
-        print_results(cv_results)
-        all_results.append(cv_results)
 
         print("\n[Final model — OOT test set]")
         final_model = train_final(train_features, train_labels, params=best_params)
