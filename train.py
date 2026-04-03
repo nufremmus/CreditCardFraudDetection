@@ -1,7 +1,11 @@
+import logging
+
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import average_precision_score
+
+logger = logging.getLogger(__name__)
 
 N_SPLITS = 5
 RANDOM_STATE = 42
@@ -88,7 +92,7 @@ def cross_validate(train_features, train_label, params=None):
         model.fit(
             fold_train_features,
             fold_train_label,
-            eval_set=[(fold_val_features, fold_val_labels)],
+            eval_set=[(fold_val_features, fold_val_label)],
             verbose=False,
         )
         oof_fraud_probabilities[fold_val_idx] = model.predict_proba(fold_val_features)[:, 1]
@@ -96,10 +100,12 @@ def cross_validate(train_features, train_label, params=None):
         fold_auprc = average_precision_score(
             fold_val_label, oof_fraud_probabilities[fold_val_idx]
         )
-        print(
-            f"  Fold {fold_num + 1}/{N_SPLITS}: "
-            f"AUPRC = {fold_auprc:.4f}  "
-            f"(best iteration: {model.best_iteration})"
+        logger.info(
+            "Fold %d/%d: AUPRC = %.4f  (best iteration: %d)",
+            fold_num + 1,
+            N_SPLITS,
+            fold_auprc,
+            model.best_iteration,
         )
 
     return oof_fraud_probabilities

@@ -1,7 +1,11 @@
+import logging
+
 from xgboost import XGBClassifier
 from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_predict
 
 from train import compute_class_weight
+
+logger = logging.getLogger(__name__)
 
 RANDOM_STATE = 42
 
@@ -59,8 +63,8 @@ def tune_hyperparameters(train_features, train_label):
 
     search.fit(train_features, train_label)
 
-    print(f"  Best CV AUPRC: {search.best_score_:.4f}")
-    print(f"  Best params:   {search.best_params_}")
+    logger.info("Best CV AUPRC: %.4f", search.best_score_)
+    logger.info("Best params:   %s", search.best_params_)
 
     # Get out-of-fold probabilities using the best estimator for plotting
     cv_train_probs = cross_val_predict(

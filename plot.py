@@ -1,3 +1,4 @@
+import logging
 import os
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,8 @@ from sklearn.metrics import (
     precision_recall_curve,
     roc_curve,
 )
+
+logger = logging.getLogger(__name__)
 
 PLOTS_DIR = "plots"
 
@@ -72,4 +75,4 @@ def save_roc_pr_plot(
     filepath = os.path.join(output_dir, filename)
     plt.savefig(filepath, dpi=150, bbox_inches="tight")
     plt.close()
-    print(f"  Plot saved to {filepath}")
+    logger.info("Plot saved to %s", filepath)

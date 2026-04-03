@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 from sklearn.metrics import (
     average_precision_score,
@@ -6,6 +8,8 @@ from sklearn.metrics import (
     recall_score,
     f1_score,
 )
+
+logger = logging.getLogger(__name__)
 
 # Decision thresholds to evaluate: 0.1%, 0.2%, 0.3%, 0.5% predicted fraud probability
 DECISION_THRESHOLDS = [0.001, 0.002, 0.003, 0.005]
@@ -46,25 +50,24 @@ def evaluate(true_labels, predicted_fraud_probs, label=""):
     return results
 
 
-def print_results(results):
-    """Print a formatted summary of evaluation metrics to stdout.
+def log_results(results):
+    """Log a formatted summary of evaluation metrics.
 
     Args:
         results: Dict returned by evaluate().
     """
-    print(f"\n{'=' * 50}")
-    print(f"  {results['label']}")
-    print(f"{'=' * 50}")
-    print(f"  AUPRC:   {results['AUPRC']:.4f}")
-    print(f"  ROC-AUC: {results['ROC-AUC']:.4f}")
-    print()
+    logger.info("=" * 50)
+    logger.info(results["label"])
+    logger.info("=" * 50)
+    logger.info("AUPRC:   %.4f", results["AUPRC"])
+    logger.info("ROC-AUC: %.4f", results["ROC-AUC"])
     for threshold in DECISION_THRESHOLDS:
-        precision = results[f"Precision@{threshold}"]
-        recall = results[f"Recall@{threshold}"]
-        f1 = results[f"F1@{threshold}"]
-        print(
-            f"  Threshold {threshold * 100:.1f}%:  "
-            f"Precision={precision:.3f}  Recall={recall:.3f}  F1={f1:.3f}"
+        logger.info(
+            "Threshold %.1f%%:  Precision=%.3f  Recall=%.3f  F1=%.3f",
+            threshold * 100,
+            results[f"Precision@{threshold}"],
+            results[f"Recall@{threshold}"],
+            results[f"F1@{threshold}"],
         )
 
 
@@ -76,4 +79,4 @@ def save_results(all_results, path="results_summary.csv"):
         path: Output file path.
     """
     pd.DataFrame(all_results).to_csv(path, index=False)
-    print(f"\nResults saved to {path}")
+    logger.info("Results saved to %s", path)

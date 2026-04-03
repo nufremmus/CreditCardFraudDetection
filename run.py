@@ -1,9 +1,18 @@
+import logging
+
 from data import load_data, split_out_of_time
 from features import get_features
 from tune import tune_hyperparameters
 from train import train_final
-from evaluate import evaluate, print_results, save_results
+from evaluate import evaluate, log_results, save_results
 from plot import save_roc_pr_plot
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s  %(levelname)s  %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 CONFIGS = [
     {"include_time": True,  "label": "With Time"},
@@ -23,17 +32,19 @@ def main():
             d. Save ROC and Precision-Recall plots grouped by config.
         3. Save all results to results_summary.csv.
     """
-    print("Loading data...")
+    logger.info("Loading data...")
     transactions = load_data()
     train_transactions, test_transactions = split_out_of_time(transactions)
 
-    print(
-        f"Train: {len(train_transactions):,} rows  |  "
-        f"fraud rate: {train_transactions['Class'].mean():.4%}"
+    logger.info(
+        "Train: %s rows  |  fraud rate: %.4f%%",
+        f"{len(train_transactions):,}",
+        train_transactions["Class"].mean() * 100,
     )
-    print(
-        f"Test:  {len(test_transactions):,} rows  |  "
-        f"fraud rate: {test_transactions['Class'].mean():.4%}"
+    logger.info(
+        "Test:  %s rows  |  fraud rate: %.4f%%",
+        f"{len(test_transactions):,}",
+        test_transactions["Class"].mean() * 100,
     )
 
     all_results = []
@@ -47,31 +58,31 @@ def main():
         test_features = test_transactions[feature_cols]
         test_label = test_transactions["Class"]
 
-        print(f"\n{'#' * 50}")
-        print(f"  CONFIG: {config_label}")
-        print(f"{'#' * 50}")
+        logger.info("=" * 50)
+        logger.info("CONFIG: %s", config_label)
+        logger.info("=" * 50)
 
-        print("\n[Hyperparameter tuning]")
+        logger.info("Starting hyperparameter tuning...")
         best_params, best_cv_auprc, cv_train_probs = tune_hyperparameters(
             train_features, train_label
         )
 
-        print("\n  Best hyperparameter combination:")
+        logger.info("Best hyperparameter combination:")
         for param_name, param_value in best_params.items():
-            print(f"    {param_name}: {param_value}")
-        print(f"  Best CV AUPRC from tuning: {best_cv_auprc:.4f}")
+            logger.info("  %s: %s", param_name, param_value)
+        logger.info("Best CV AUPRC from tuning: %.4f", best_cv_auprc)
 
-        print("\n[Final model — OOT test set]")
+        logger.info("Training final model...")
         final_model = train_final(train_features, train_label, params=best_params)
         test_fraud_probs = final_model.predict_proba(test_features)[:, 1]
 
         test_results = evaluate(
             test_label, test_fraud_probs, label=f"{config_label} — OOT Test"
         )
-        print_results(test_results)
+        log_results(test_results)
         all_results.append(test_results)
 
-        print("\n[Saving plots]")
+        logger.info("Saving plots...")
         save_roc_pr_plot(
             train_label=train_label,
             train_cv_probs=cv_train_probs,
