@@ -57,7 +57,7 @@ def make_model(class_weight, params=None, early_stopping_rounds=20):
     )
 
 
-def cross_validate(train_features, train_labels, params=None):
+def cross_validate(train_features, train_label, params=None):
     """Run stratified k-fold cross-validation and return out-of-fold probabilities.
 
     Stratified splits preserve the fraud/genuine ratio in each fold.
@@ -66,7 +66,7 @@ def cross_validate(train_features, train_labels, params=None):
 
     Args:
         train_features: DataFrame of input features for the training set.
-        train_labels: Series of binary labels (0/1) for the training set.
+        train_label: Series of binary labels (0/1) for the training set.
         params: Hyperparameter dict (e.g. from tune_hyperparameters).
                 Falls back to DEFAULT_PARAMS if None.
 
@@ -74,27 +74,27 @@ def cross_validate(train_features, train_labels, params=None):
         NumPy array of predicted fraud probabilities for each training row.
     """
     splitter = StratifiedKFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE)
-    oof_fraud_probabilities = np.zeros(len(train_labels))
+    oof_fraud_probabilities = np.zeros(len(train_label))
 
     for fold_num, (fold_train_idx, fold_val_idx) in enumerate(
-        splitter.split(train_features, train_labels)
+        splitter.split(train_features, train_label)
     ):
         fold_train_features = train_features.iloc[fold_train_idx]
         fold_val_features = train_features.iloc[fold_val_idx]
-        fold_train_labels = train_labels.iloc[fold_train_idx]
-        fold_val_labels = train_labels.iloc[fold_val_idx]
+        fold_train_label = train_label.iloc[fold_train_idx]
+        fold_val_label = train_label.iloc[fold_val_idx]
 
-        model = make_model(compute_class_weight(fold_train_labels), params=params)
+        model = make_model(compute_class_weight(fold_train_label), params=params)
         model.fit(
             fold_train_features,
-            fold_train_labels,
+            fold_train_label,
             eval_set=[(fold_val_features, fold_val_labels)],
             verbose=False,
         )
         oof_fraud_probabilities[fold_val_idx] = model.predict_proba(fold_val_features)[:, 1]
 
         fold_auprc = average_precision_score(
-            fold_val_labels, oof_fraud_probabilities[fold_val_idx]
+            fold_val_label, oof_fraud_probabilities[fold_val_idx]
         )
         print(
             f"  Fold {fold_num + 1}/{N_SPLITS}: "
@@ -105,7 +105,7 @@ def cross_validate(train_features, train_labels, params=None):
     return oof_fraud_probabilities
 
 
-def train_final(train_features, train_labels, params=None):
+def train_final(train_features, train_label, params=None):
     """Train a final XGBoost model on the full training set.
 
     Early stopping is disabled since there is no held-out validation set
@@ -113,7 +113,7 @@ def train_final(train_features, train_labels, params=None):
 
     Args:
         train_features: DataFrame of input features for the full training set.
-        train_labels: Series of binary labels for the full training set.
+        train_label: Series of binary labels for the full training set.
         params: Hyperparameter dict (e.g. from tune_hyperparameters).
                 Falls back to DEFAULT_PARAMS if None.
 
@@ -121,9 +121,9 @@ def train_final(train_features, train_labels, params=None):
         Fitted XGBClassifier.
     """
     model = make_model(
-        compute_class_weight(train_labels),
+        compute_class_weight(train_label),
         params=params,
         early_stopping_rounds=None,
     )
-    model.fit(train_features, train_labels)
+    model.fit(train_features, train_label)
     return model
